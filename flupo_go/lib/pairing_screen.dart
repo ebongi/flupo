@@ -111,6 +111,10 @@ class PairingScreenState extends State<PairingScreen> {
     });
   }
 
+  void _requestReload() {
+    _channel?.sink.add(jsonEncode({'type': 'reload'}));
+  }
+
   void _reset() {
     setState(() {
       _status = PairingStatus.scanning;
@@ -144,6 +148,12 @@ class PairingScreenState extends State<PairingScreen> {
               Text('Paired to $_projectName'),
               const SizedBox(height: 8),
               Text(_statusMessage ?? 'Waiting for hot reload...'),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _requestReload,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reload'),
+              ),
             ],
           ),
         ),

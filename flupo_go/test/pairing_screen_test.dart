@@ -12,18 +12,25 @@ const _mobileScannerMethodChannel = MethodChannel(
 
 Future<HttpServer> _startFakePairingServer({
   required String expectedToken,
-  required List<Map<String, dynamic>> extraMessagesAfterPairing,
+  List<Map<String, dynamic>> extraMessagesAfterPairing = const [],
+  void Function(String data)? onMessageAfterPairing,
 }) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   server.listen((request) async {
     final socket = await WebSocketTransformer.upgrade(request);
+    var paired = false;
     socket.listen((data) {
-      if (data == expectedToken) {
-        socket.add(jsonEncode({'type': 'paired'}));
-        for (final message in extraMessagesAfterPairing) {
-          socket.add(jsonEncode(message));
+      if (!paired) {
+        if (data == expectedToken) {
+          paired = true;
+          socket.add(jsonEncode({'type': 'paired'}));
+          for (final message in extraMessagesAfterPairing) {
+            socket.add(jsonEncode(message));
+          }
         }
+        return;
       }
+      onMessageAfterPairing?.call(data as String);
     });
   });
   return server;
@@ -97,5 +104,46 @@ void main() {
 
     expect(find.text('Paired to flupo_go'), findsOneWidget);
     expect(find.text('app.start'), findsOneWidget);
+  });
+
+  testWidgets('tapping Reload sends a reload message to the server', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: PairingScreen(useCameraPreview: false)),
+    );
+    final state = tester.state<PairingScreenState>(find.byType(PairingScreen));
+
+    late HttpServer server;
+    final receivedAfterPairing = <String>[];
+    await tester.runAsync(() async {
+      server = await _startFakePairingServer(
+        expectedToken: 'test-token',
+        onMessageAfterPairing: receivedAfterPairing.add,
+      );
+      final payload = jsonEncode({
+        'host': 'localhost',
+        'port': server.port,
+        'projectName': 'flupo_go',
+        'token': 'test-token',
+      });
+      state.handleScannedData(payload);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    addTearDown(server.close);
+    await tester.pump();
+
+    expect(find.widgetWithText(ElevatedButton, 'Reload'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Reload'));
+    await tester.pump();
+    // Give the real socket write time to actually reach the server.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+
+    expect(receivedAfterPairing, [
+      jsonEncode({'type': 'reload'}),
+    ]);
   });
 }
