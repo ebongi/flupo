@@ -117,12 +117,16 @@ class StartCommand extends Command<int> {
       logger.info('Reload requested from Flupo Go.');
       daemon.triggerReload();
     });
+    final pairedSub = devServer.onPaired.listen((_) {
+      logger.info('Flupo Go paired.');
+    });
 
     logger.info(
-      'Paired and watching for reload requests — press Ctrl+C to stop.',
+      'Waiting for Flupo Go to scan and pair — press Ctrl+C to stop.',
     );
     await interruptSignal.first;
 
+    await pairedSub.cancel();
     await reloadSub.cancel();
     await daemonSub.cancel();
     daemon.stop();

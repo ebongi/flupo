@@ -16,7 +16,8 @@ void main() {
   WebSocketChannel connect() =>
       WebSocketChannel.connect(Uri.parse('ws://localhost:${server.port}'));
 
-  test('accepts the correct pairing token', () async {
+  test('accepts the correct pairing token and fires onPaired', () async {
+    final pairedFuture = server.onPaired.first;
     final client = connect();
     await client.ready;
     client.sink.add('correct-token');
@@ -25,7 +26,17 @@ void main() {
         jsonDecode(await client.stream.first as String) as Map<String, dynamic>;
 
     expect(response['type'], 'paired');
+    await pairedFuture.timeout(const Duration(seconds: 5));
     await client.sink.close();
+  });
+
+  test('does not fire onPaired when no client has connected', () async {
+    var paired = false;
+    final sub = server.onPaired.listen((_) => paired = true);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(paired, isFalse);
+    await sub.cancel();
   });
 
   test('rejects an incorrect pairing token', () async {

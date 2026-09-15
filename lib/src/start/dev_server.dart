@@ -21,11 +21,16 @@ class DevServer {
 
   WebSocketChannel? _client;
   final _reloadController = StreamController<void>.broadcast();
+  final _pairedController = StreamController<void>.broadcast();
 
   int get port => _server.port;
 
   /// Fires whenever the paired client asks for a reload.
   Stream<void> get onReloadRequested => _reloadController.stream;
+
+  /// Fires once a client presents the correct token and is actually paired —
+  /// distinct from the server simply being up and waiting for a connection.
+  Stream<void> get onPaired => _pairedController.stream;
 
   static Future<DevServer> start({int port = 0, String? token}) async {
     final resolvedToken = token ?? const Uuid().v4();
@@ -58,6 +63,7 @@ class DevServer {
       if (data == token && _client == null) {
         _client = channel;
         channel.sink.add(jsonEncode({'type': 'paired'}));
+        _pairedController.add(null);
       } else {
         channel.sink.close(4001, 'invalid or already-used pairing token');
       }
@@ -86,6 +92,7 @@ class DevServer {
   Future<void> close() async {
     await _client?.sink.close();
     await _reloadController.close();
+    await _pairedController.close();
     await _server.close(force: true);
   }
 }
