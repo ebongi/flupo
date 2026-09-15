@@ -15,3 +15,6 @@ permissions:
 build:
   target: apk
   runner: github_actions
+  github:
+    repo: ebongi/flupo
+    workflow: flupo-build.yml

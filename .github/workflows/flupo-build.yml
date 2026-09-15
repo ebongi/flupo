@@ -1,0 +1,62 @@
+name: Flupo Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch flupo build was run from
+        required: true
+        type: string
+      commit:
+        description: Exact commit to check out
+        required: true
+        type: string
+      target:
+        description: Build target (apk, appbundle)
+        required: true
+        type: string
+      correlation_id:
+        description: Used by flupo build to find this run (see run-name below)
+        required: true
+        type: string
+
+# flupo build matches its dispatched run by this display name, since the
+# dispatch API itself returns no run id.
+run-name: "flupo ${{ inputs.correlation_id }}"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        working-directory: flupo_go
+        run: flutter pub get
+
+      - name: Build APK
+        if: inputs.target == 'apk'
+        working-directory: flupo_go
+        run: flutter build apk --debug
+
+      - name: Build App Bundle
+        if: inputs.target == 'appbundle'
+        working-directory: flupo_go
+        run: flutter build appbundle --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flupo-build-${{ inputs.correlation_id }}
+          path: |
+            flupo_go/build/app/outputs/flutter-apk/*.apk
+            flupo_go/build/app/outputs/bundle/*/*.aab
+          if-no-files-found: error
