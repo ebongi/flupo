@@ -22,6 +22,14 @@ class PatchCommand extends Command<int> {
         abbr: 'n',
         negatable: false,
         help: 'Show what would change without writing any files.',
+      )
+      ..addFlag(
+        'prune',
+        negatable: false,
+        help:
+            'Also remove previously-added permissions no longer in '
+            'flupo.yaml. Only ever touches flupo-managed entries, never '
+            "anything you wrote by hand.",
       );
   }
 
@@ -45,6 +53,7 @@ class PatchCommand extends Command<int> {
             fileSystem.path.normalize(fileSystem.path.absolute(rawPath)),
           );
     final dryRun = results.flag('dry-run');
+    final prune = results.flag('prune');
 
     final FlupoManifest manifest;
     try {
@@ -56,8 +65,8 @@ class PatchCommand extends Command<int> {
       return 1;
     }
 
-    await _patchAndroid(projectDir, manifest, dryRun: dryRun);
-    await _patchIos(projectDir, manifest, dryRun: dryRun);
+    await _patchAndroid(projectDir, manifest, dryRun: dryRun, prune: prune);
+    await _patchIos(projectDir, manifest, dryRun: dryRun, prune: prune);
 
     return 0;
   }
@@ -66,6 +75,7 @@ class PatchCommand extends Command<int> {
     Directory projectDir,
     FlupoManifest manifest, {
     required bool dryRun,
+    required bool prune,
   }) async {
     final androidDir = projectDir.childDirectory('android');
     if (!await androidDir.exists()) {
@@ -78,17 +88,27 @@ class PatchCommand extends Command<int> {
     );
     if (await manifestFile.exists()) {
       final original = await manifestFile.readAsString();
-      final result = patchAndroidManifest(original, manifest.permissions);
-      if (result.changed) {
+      final addResult = patchAndroidManifest(original, manifest.permissions);
+      var content = addResult.content;
+      var removed = const <String>[];
+      if (prune) {
+        final pruneResult = pruneAndroidManifest(content, manifest.permissions);
+        content = pruneResult.content;
+        removed = pruneResult.removed;
+      }
+      if (content != original) {
         await _write(
           manifestFile,
           original: original,
-          updated: result.content,
+          updated: content,
           dryRun: dryRun,
         );
-        logger.info(
-          '${_verb('Added', dryRun)} ${result.added.length} Android '
-          'permission(s) in ${manifestFile.path}: ${result.added.join(', ')}',
+        _logPermissionChanges(
+          dryRun: dryRun,
+          label: 'Android permission',
+          filePath: manifestFile.path,
+          added: addResult.added,
+          removed: removed,
         );
       } else {
         logger.info(
@@ -148,6 +168,7 @@ class PatchCommand extends Command<int> {
     Directory projectDir,
     FlupoManifest manifest, {
     required bool dryRun,
+    required bool prune,
   }) async {
     final iosDir = projectDir.childDirectory('ios');
     if (!await iosDir.exists()) {
@@ -158,17 +179,27 @@ class PatchCommand extends Command<int> {
     final plistFile = projectDir.childFile('ios/Runner/Info.plist');
     if (await plistFile.exists()) {
       final original = await plistFile.readAsString();
-      final result = patchInfoPlist(original, manifest.permissions);
-      if (result.changed) {
+      final addResult = patchInfoPlist(original, manifest.permissions);
+      var content = addResult.content;
+      var removed = const <String>[];
+      if (prune) {
+        final pruneResult = pruneInfoPlist(content, manifest.permissions);
+        content = pruneResult.content;
+        removed = pruneResult.removed;
+      }
+      if (content != original) {
         await _write(
           plistFile,
           original: original,
-          updated: result.content,
+          updated: content,
           dryRun: dryRun,
         );
-        logger.info(
-          '${_verb('Added', dryRun)} ${result.added.length} iOS usage '
-          'description(s) in ${plistFile.path}: ${result.added.join(', ')}',
+        _logPermissionChanges(
+          dryRun: dryRun,
+          label: 'iOS usage description',
+          filePath: plistFile.path,
+          added: addResult.added,
+          removed: removed,
         );
       } else {
         logger.info(
@@ -214,6 +245,23 @@ class PatchCommand extends Command<int> {
 
   String _verb(String verb, bool dryRun) =>
       dryRun ? '[dry-run] would be ${verb.toLowerCase()}' : verb;
+
+  void _logPermissionChanges({
+    required bool dryRun,
+    required String label,
+    required String filePath,
+    required List<String> added,
+    required List<String> removed,
+  }) {
+    final prefix = dryRun ? '[dry-run] would ' : '';
+    final parts = [
+      if (added.isNotEmpty)
+        'add ${added.length} $label(s) (${added.join(', ')})',
+      if (removed.isNotEmpty)
+        'remove ${removed.length} $label(s) (${removed.join(', ')})',
+    ];
+    logger.info('$prefix${parts.join(' and ')} in $filePath.');
+  }
 
   Future<void> _write(
     File file, {

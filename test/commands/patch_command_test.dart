@@ -170,4 +170,106 @@ build:
       expect('android.permission.CAMERA'.allMatches(afterSecond).length, 1);
     },
   );
+
+  test(
+    'without --prune, a permission removed from flupo.yaml is left in place',
+    () async {
+      writeManifest();
+      writeAndroidProject();
+      writeIosProject();
+      await buildRunner().runFlupo(['patch']);
+
+      fileSystem.file('/project/flupo.yaml').writeAsStringSync('''
+name: flupo_go
+version: 1.0.0+1
+identifier: com.acme.myapp
+permissions: {}
+build:
+  target: apk
+  runner: github_actions
+''');
+      final code = await buildRunner().runFlupo(['patch']);
+
+      expect(code, 0);
+      expect(
+        fileSystem
+            .file('/project/android/app/src/main/AndroidManifest.xml')
+            .readAsStringSync(),
+        contains('android.permission.CAMERA'),
+      );
+      expect(
+        fileSystem.file('/project/ios/Runner/Info.plist').readAsStringSync(),
+        contains('NSCameraUsageDescription'),
+      );
+    },
+  );
+
+  test('--prune removes a permission no longer in flupo.yaml', () async {
+    writeManifest();
+    writeAndroidProject();
+    writeIosProject();
+    await buildRunner().runFlupo(['patch']);
+
+    fileSystem.file('/project/flupo.yaml').writeAsStringSync('''
+name: flupo_go
+version: 1.0.0+1
+identifier: com.acme.myapp
+permissions: {}
+build:
+  target: apk
+  runner: github_actions
+''');
+    final code = await buildRunner().runFlupo(['patch', '--prune']);
+
+    expect(code, 0);
+    expect(
+      fileSystem
+          .file('/project/android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync(),
+      isNot(contains('android.permission.CAMERA')),
+    );
+    expect(
+      fileSystem.file('/project/ios/Runner/Info.plist').readAsStringSync(),
+      isNot(contains('NSCameraUsageDescription')),
+    );
+    expect(
+      logger.infos,
+      anyElement(
+        allOf(contains('remove'), contains('android.permission.CAMERA')),
+      ),
+    );
+  });
+
+  test('--prune --dry-run reports removals without writing them', () async {
+    writeManifest();
+    writeAndroidProject();
+    await buildRunner().runFlupo(['patch']);
+    final afterFirstPatch = fileSystem
+        .file('/project/android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+
+    fileSystem.file('/project/flupo.yaml').writeAsStringSync('''
+name: flupo_go
+version: 1.0.0+1
+identifier: com.acme.myapp
+permissions: {}
+build:
+  target: apk
+  runner: github_actions
+''');
+    final code = await buildRunner().runFlupo([
+      'patch',
+      '--prune',
+      '--dry-run',
+    ]);
+
+    expect(code, 0);
+    expect(
+      fileSystem
+          .file('/project/android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync(),
+      afterFirstPatch,
+    );
+    expect(logger.infos, anyElement(contains('[dry-run]')));
+  });
 }
