@@ -15,6 +15,7 @@ import '../build/github_actions_runner.dart';
 import '../build/github_credentials_store.dart';
 import '../build/local_artifact_server.dart';
 import '../manifest/flupo_manifest.dart';
+import '../util/local_ip.dart';
 import '../util/logger.dart';
 import '../util/terminal_qr.dart';
 
@@ -249,7 +250,7 @@ class BuildCommand extends Command<int> {
     logger.info('Saved artifact to ${artifactFile.path}');
 
     final server = await LocalArtifactServer.serve(artifactFile);
-    final host = await _detectLocalIp() ?? 'localhost';
+    final host = await detectLocalIp() ?? 'localhost';
     final url = server.urlFor(host);
     logger.info('Download it on your phone: $url');
     logger.info(renderTerminalQr(url.toString()));
@@ -287,24 +288,6 @@ class BuildCommand extends Command<int> {
     'ipa' => 'ipa',
     _ => target,
   };
-
-  Future<String?> _detectLocalIp() async {
-    // Best-effort only — falls back to localhost (unreachable from a phone,
-    // but keeps the command usable e.g. over an emulator/loopback setup).
-    try {
-      final interfaces = await NetworkInterface.list(
-        type: InternetAddressType.IPv4,
-      );
-      for (final interface in interfaces) {
-        for (final address in interface.addresses) {
-          if (!address.isLoopback) return address.address;
-        }
-      }
-    } catch (_) {
-      // Ignore and fall back to localhost.
-    }
-    return null;
-  }
 
   Future<void> _tryAdbInstall(String artifactPath) async {
     final devicesResult = await processManager.run(['adb', 'devices']);

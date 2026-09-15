@@ -7,6 +7,7 @@ import 'commands/build_command.dart';
 import 'commands/doctor_command.dart';
 import 'commands/init_command.dart';
 import 'commands/patch_command.dart';
+import 'commands/start_command.dart';
 import 'util/logger.dart';
 
 /// The `flupo` CLI's command tree. Every subcommand shares this instance's
@@ -34,7 +35,13 @@ class FlupoCommandRunner extends CommandRunner<int> {
         logger: this.logger,
       ),
     );
-    // start registers itself here once implemented.
+    addCommand(
+      StartCommand(
+        fileSystem: this.fileSystem,
+        processManager: this.processManager,
+        logger: this.logger,
+      ),
+    );
   }
 
   final FileSystem fileSystem;
