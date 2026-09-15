@@ -66,9 +66,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- flupo:managed:start -->
-	<key>NSCameraUsageDescription</key>
-	<string>Flupo Go needs camera access to scan the pairing QR code</string>
-	<!-- flupo:managed:end -->
 </dict>
 </plist>

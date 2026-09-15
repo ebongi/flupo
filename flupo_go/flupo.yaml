@@ -8,7 +8,8 @@ identifier: com.example.flupo_go
 # permissions:
 #   camera: "Need camera access for profile photo"
 #   location: "Need location for delivery tracking"
-permissions: {}
+permissions:
+  camera: "Flupo Go needs camera access to scan the pairing QR code"
 
 # Where `flupo build` sends your project to compile.
 build:

@@ -42,7 +42,4 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
-    <!-- flupo:managed:start -->
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <!-- flupo:managed:end -->
 </manifest>
