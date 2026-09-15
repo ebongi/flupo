@@ -39,6 +39,68 @@ build:
       expect(manifest.build.target, 'appbundle');
     });
 
+    test('parses build.github.repo and workflow', () {
+      final manifest = FlupoManifest.parse('''
+name: my_app
+version: 1.0.0+1
+identifier: com.example.myapp
+build:
+  target: apk
+  runner: github_actions
+  github:
+    repo: acme/my_app
+    workflow: build.yml
+''');
+
+      expect(manifest.build.githubRepo, 'acme/my_app');
+      expect(manifest.build.githubWorkflow, 'build.yml');
+    });
+
+    test('rejects a build.github.repo not shaped like "owner/name"', () {
+      expect(
+        () => FlupoManifest.parse('''
+name: my_app
+version: 1.0.0+1
+identifier: com.example.myapp
+build:
+  target: apk
+  runner: github_actions
+  github:
+    repo: not-a-valid-repo
+'''),
+        throwsA(
+          isA<ManifestValidationException>().having(
+            (e) => e.errors.single,
+            'errors',
+            contains('must look like "owner/name"'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects an empty build.github.workflow', () {
+      expect(
+        () => FlupoManifest.parse('''
+name: my_app
+version: 1.0.0+1
+identifier: com.example.myapp
+build:
+  target: apk
+  runner: github_actions
+  github:
+    repo: acme/my_app
+    workflow: ""
+'''),
+        throwsA(
+          isA<ManifestValidationException>().having(
+            (e) => e.errors.single,
+            'errors',
+            contains('"build.github.workflow" must be a non-empty string'),
+          ),
+        ),
+      );
+    });
+
     test('collects every validation error in one pass', () {
       try {
         FlupoManifest.parse('''

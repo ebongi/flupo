@@ -3,6 +3,7 @@ import 'package:file/file.dart';
 import 'package:file/local.dart';
 import 'package:process/process.dart';
 
+import 'commands/build_command.dart';
 import 'commands/doctor_command.dart';
 import 'commands/init_command.dart';
 import 'commands/patch_command.dart';
@@ -26,8 +27,14 @@ class FlupoCommandRunner extends CommandRunner<int> {
     );
     addCommand(InitCommand(fileSystem: this.fileSystem, logger: this.logger));
     addCommand(PatchCommand(fileSystem: this.fileSystem, logger: this.logger));
-    // Remaining subcommands (build, start) register themselves here as each
-    // is implemented.
+    addCommand(
+      BuildCommand(
+        fileSystem: this.fileSystem,
+        processManager: this.processManager,
+        logger: this.logger,
+      ),
+    );
+    // start registers itself here once implemented.
   }
 
   final FileSystem fileSystem;

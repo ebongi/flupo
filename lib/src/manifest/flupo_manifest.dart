@@ -4,19 +4,35 @@ import 'package:yaml/yaml.dart';
 import 'permission_catalog.dart';
 
 class BuildConfig {
-  const BuildConfig({this.target = 'apk', this.runner = 'github_actions'});
+  const BuildConfig({
+    this.target = 'apk',
+    this.runner = 'github_actions',
+    this.githubRepo,
+    this.githubWorkflow,
+  });
 
   final String target;
   final String runner;
+
+  /// "owner/name" of the GitHub repo `flupo build` dispatches its workflow
+  /// in. May be omitted here and supplied via `--repo` instead.
+  final String? githubRepo;
+
+  /// The workflow file `flupo build` dispatches, e.g. "build.yml". May be
+  /// omitted here and supplied via `--workflow` instead.
+  final String? githubWorkflow;
 
   static const List<String> supportedTargets = ['apk', 'appbundle', 'ipa'];
   static const List<String> supportedRunners = ['github_actions'];
 
   factory BuildConfig.fromYaml(YamlMap? yaml) {
     if (yaml == null) return const BuildConfig();
+    final github = yaml['github'];
     return BuildConfig(
       target: yaml['target'] as String? ?? 'apk',
       runner: yaml['runner'] as String? ?? 'github_actions',
+      githubRepo: github is YamlMap ? github['repo'] as String? : null,
+      githubWorkflow: github is YamlMap ? github['workflow'] as String? : null,
     );
   }
 }
@@ -146,6 +162,23 @@ class FlupoManifest {
             'Unsupported build runner "${build.runner}". Supported: '
             '${BuildConfig.supportedRunners.join(', ')}.',
           );
+        }
+        final rawGithub = rawBuild['github'];
+        if (rawGithub != null && rawGithub is! YamlMap) {
+          errors.add(
+            '"build.github" must be a mapping with "repo" and "workflow".',
+          );
+        } else if (rawGithub is YamlMap) {
+          final repo = rawGithub['repo'];
+          if (repo != null &&
+              (repo is! String ||
+                  !RegExp(r'^[^/\s]+/[^/\s]+$').hasMatch(repo))) {
+            errors.add('"build.github.repo" must look like "owner/name".');
+          }
+          final workflow = rawGithub['workflow'];
+          if (workflow != null && (workflow is! String || workflow.isEmpty)) {
+            errors.add('"build.github.workflow" must be a non-empty string.');
+          }
         }
       }
     }
