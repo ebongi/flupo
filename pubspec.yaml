@@ -1,0 +1,28 @@
+name: flupo
+description: A sample command-line application with basic argument parsing.
+version: 0.0.1
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.12.2
+
+# Add regular dependencies here.
+dependencies:
+  archive: ^4.3.0
+  args: ^2.7.0
+  ascii_qr: ^1.0.1
+  cli_util: ^0.6.0
+  file: ^7.0.1
+  http: ^1.6.0
+  path: ^1.9.1
+  process: ^5.0.6
+  shelf: ^1.4.2
+  shelf_web_socket: ^3.0.0
+  uuid: ^4.6.0
+  xml: ^7.0.1
+  yaml: ^3.1.4
+
+dev_dependencies:
+  lints: ^6.0.0
+  mocktail: ^1.0.5
+  test: ^1.25.6
