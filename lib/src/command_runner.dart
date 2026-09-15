@@ -6,6 +6,8 @@ import 'package:process/process.dart';
 import 'commands/build_command.dart';
 import 'commands/doctor_command.dart';
 import 'commands/init_command.dart';
+import 'commands/login_command.dart';
+import 'commands/logout_command.dart';
 import 'commands/patch_command.dart';
 import 'commands/start_command.dart';
 import 'util/logger.dart';
@@ -28,6 +30,14 @@ class FlupoCommandRunner extends CommandRunner<int> {
     );
     addCommand(InitCommand(fileSystem: this.fileSystem, logger: this.logger));
     addCommand(PatchCommand(fileSystem: this.fileSystem, logger: this.logger));
+    addCommand(
+      LoginCommand(
+        fileSystem: this.fileSystem,
+        processManager: this.processManager,
+        logger: this.logger,
+      ),
+    );
+    addCommand(LogoutCommand(fileSystem: this.fileSystem, logger: this.logger));
     addCommand(
       BuildCommand(
         fileSystem: this.fileSystem,

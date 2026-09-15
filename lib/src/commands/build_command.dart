@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:args/command_runner.dart';
-import 'package:cli_util/cli_util.dart';
 import 'package:file/file.dart';
 import 'package:http/http.dart' as http;
 import 'package:process/process.dart';
@@ -34,12 +33,7 @@ class BuildCommand extends Command<int> {
            CompositeGithubCredentialsStore([
              EnvGithubCredentialsStore(Platform.environment),
              FileGithubCredentialsStore(
-               fileSystem.file(
-                 fileSystem.path.join(
-                   BaseDirectories('flupo').configHome,
-                   'credentials.json',
-                 ),
-               ),
+               defaultGithubCredentialsFile(fileSystem),
              ),
            ]),
        interruptSignal = interruptSignal ?? ProcessSignal.sigint.watch() {
@@ -142,10 +136,9 @@ class BuildCommand extends Command<int> {
     final token = await credentialsStore.read();
     if (token == null) {
       logger.error(
-        'No GitHub token found. Set the FLUPO_GITHUB_TOKEN environment '
-        'variable to a personal access token with the "workflow" scope, or '
-        'place one at ${fileSystem.path.join(BaseDirectories('flupo').configHome, 'credentials.json')} '
-        'as {"github_token": "..."}.',
+        'No GitHub token found. Run `flupo login`, or set the '
+        'FLUPO_GITHUB_TOKEN environment variable to a personal access token '
+        'with the "workflow" scope.',
       );
       return 1;
     }
