@@ -104,6 +104,7 @@ class PairingScreenState extends State<PairingScreen> {
   }
 
   void _fail(String message) {
+    _channel = null;
     if (!mounted) return;
     setState(() {
       _status = PairingStatus.error;
@@ -115,7 +116,12 @@ class PairingScreenState extends State<PairingScreen> {
     _channel?.sink.add(jsonEncode({'type': 'reload'}));
   }
 
-  void _reset() {
+  /// Leaves the paired session (or the error screen) and returns to
+  /// scanning, closing the socket first if one is still open.
+  void _disconnect() {
+    _channelSubscription?.cancel();
+    _channel?.sink.close();
+    _channel = null;
     setState(() {
       _status = PairingStatus.scanning;
       _errorMessage = null;
@@ -154,6 +160,12 @@ class PairingScreenState extends State<PairingScreen> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reload'),
               ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _disconnect,
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Go home'),
+              ),
             ],
           ),
         ),
@@ -162,7 +174,10 @@ class PairingScreenState extends State<PairingScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_errorMessage ?? 'Something went wrong.'),
-              TextButton(onPressed: _reset, child: const Text('Try again')),
+              TextButton(
+                onPressed: _disconnect,
+                child: const Text('Try again'),
+              ),
             ],
           ),
         ),
